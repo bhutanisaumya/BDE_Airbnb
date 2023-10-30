@@ -1,0 +1,12 @@
+sources:
+  - name: raw
+    description: Raw data from CSV files
+    database: postgres
+    schema: raw
+
+    tables:
+      - name: census_g1
+      - name: census_g2
+      - name: lgacode
+      - name: lgasuburb
+      - name: listings
