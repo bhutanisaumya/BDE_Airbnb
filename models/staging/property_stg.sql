@@ -12,4 +12,16 @@ WITH property_stg  AS (
 )
 
 -- Select all records from the property_stg CTE
-SELECT * FROM property_stg
+SELECT 
+    listing_id,
+    host_id,
+    listing_neighbourhood,
+    property_type,
+    room_type,
+    accommodates,
+    scraped_date::date,
+    dbt_scd_id,
+    dbt_updated_at::date,
+    dbt_valid_from::date,
+    CASE WHEN dbt_valid_to IS NULL THEN '9999-12-31'::date ELSE dbt_valid_to::date END AS dbt_valid_to
+FROM property_stg

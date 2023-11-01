@@ -5,15 +5,15 @@
       target_schema='raw',
       materialized='snapshot',
       strategy='timestamp',
-      unique_key="host_id",
+      unique_key="listing_id",
       updated_at='scraped_date'
     )
 }}
 -- Create a CTE to select room data  
 with room_data as (
     select DISTINCT
-        host_id,
         listing_id,
+        host_id,
         listing_neighbourhood,
         property_type,
         room_type,

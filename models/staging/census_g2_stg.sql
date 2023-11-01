@@ -12,7 +12,7 @@ WITH census_g2_stg AS (
 )
 
  -- remove the prefix LGA from lga_code
-SELECT SUBSTRING(lga_code_2016, 4) AS lga_code,
+SELECT SUBSTRING(lga_code_2016, 4)::integer AS lga_code,
    median_age_persons,
 	median_mortgage_repay_monthly,
 	median_tot_prsnl_inc_weekly,

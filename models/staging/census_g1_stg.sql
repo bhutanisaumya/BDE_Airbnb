@@ -14,7 +14,7 @@ WITH census_g1_stg AS (
 )
 
 -- Select specific columns
-SELECT SUBSTRING(lga_code_2016, 4) AS lga_code,
+SELECT SUBSTRING(lga_code_2016, 4)::integer AS lga_code,
     tot_p_m,
 	tot_p_f,
 	tot_p_p ,

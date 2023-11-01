@@ -15,15 +15,15 @@ clean_host_data AS (
     SELECT
         CASE
             WHEN host_since IS NULL OR host_since !~ '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$' THEN '01/01/1900' ELSE host_since END as host_since,
-        scraped_date,
+        scraped_date::date,
         host_id,
         host_name,
         COALESCE(NULLIF(host_is_superhost, 'NaN'), MAX(COALESCE(NULLIF(host_is_superhost, 'NaN'), '')) OVER (PARTITION BY host_id)) AS host_is_superhost,
         COALESCE(NULLIF(host_neighbourhood, 'NaN'), MAX(COALESCE(NULLIF(host_neighbourhood, 'NaN'), '')) OVER (PARTITION BY host_id)) AS host_neighbourhood,
         dbt_scd_id,
-        dbt_updated_at,
-        dbt_valid_from,
-        dbt_valid_to
+        dbt_updated_at::date,
+        dbt_valid_from::date,
+        CASE WHEN dbt_valid_to IS NULL THEN '9999-12-31'::date ELSE dbt_valid_to::date END AS dbt_valid_to
     FROM source
 ),
 
