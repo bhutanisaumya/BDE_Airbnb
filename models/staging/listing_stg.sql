@@ -15,7 +15,7 @@ WITH listing_stg AS (
 SELECT
     listing_id,
     host_id,
-    scraped_date,
+    scraped_date::date,
     has_availability,
     availability_30,
     COALESCE(NULLIF(number_of_reviews, NULL), 0) AS number_of_reviews,
