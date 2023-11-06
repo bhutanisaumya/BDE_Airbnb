@@ -6,6 +6,7 @@
     )
 }}
 
+-- Create a common table expression (CTE) to compute statistics for active listings
 WITH CTE_ACTIVE_LISTINGS AS (
     SELECT
         listing_neighbourhood,
@@ -14,6 +15,7 @@ WITH CTE_ACTIVE_LISTINGS AS (
         date_trunc('year', date) AS year,
         COUNT(DISTINCT listing_id) AS total_listings,
         COUNT(DISTINCT CASE WHEN has_availability = 't' THEN listing_id END) AS total_active_listings,
+        COUNT(DISTINCT CASE WHEN has_availability = 'f' THEN listing_id END) AS total_inactive_listings,
         MIN(CASE WHEN has_availability = 't' THEN price END) AS min_price_active_listings,
         MAX(CASE WHEN has_availability = 't' THEN price END) AS max_price_active_listings,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN has_availability = 't' THEN price END) AS median_price_active_listings,
@@ -27,22 +29,21 @@ WITH CTE_ACTIVE_LISTINGS AS (
     GROUP BY listing_neighbourhood, month, year
 )
 
+-- Query to calculate various statistics based on the CTE_ACTIVE_LISTINGS
 SELECT
     listing_neighbourhood,
     "month/year",
-    total_listings,
-    total_active_listings,
+    ROUND((total_active_listings::numeric / NULLIF(total_listings, 0)),2) * 100 AS active_listing_rate,
     min_price_active_listings,
     max_price_active_listings,
     median_price_active_listings,
-    avg_price_active_listings,
+    ROUND(avg_price_active_listings,2) AS avg_price_active_listings,
     total_distinct_hosts,
-    total_superhost_count,
-    ((total_superhost_count / total_distinct_hosts) * 100 ) AS superhost_rate,
-    true_avg_review_score_rating,
-    (total_active_listings - LAG(total_active_listings) OVER (PARTITION BY listing_neighbourhood ORDER BY "month/year")) * 100 / NULLIF(LAG(total_active_listings) OVER (PARTITION BY listing_neighbourhood ORDER BY "month/year"), 0) AS percentage_change_active,
-    (total_listings - total_active_listings - (LAG(total_listings) OVER (PARTITION BY listing_neighbourhood ORDER BY "month/year") - LAG(total_active_listings) OVER (PARTITION BY listing_neighbourhood ORDER BY "month/year"))) * 100 / NULLIF((LAG(total_listings) OVER (PARTITION BY listing_neighbourhood ORDER BY "month/year") - LAG(total_active_listings) OVER (PARTITION BY listing_neighbourhood ORDER BY "month/year")), 0) AS percentage_change_inactive,
+    ROUND(((total_superhost_count::numeric / NULLIF(total_distinct_hosts, 0)) * 100),2) AS superhost_rate,
+    ROUND(true_avg_review_score_rating,2) AS true_avg_review_score_rating,
+    ROUND((total_active_listings - LAG(total_active_listings, 1) OVER (PARTITION BY listing_neighbourhood ORDER BY TO_DATE("month/year", 'MM/YYYY'))) * 100 / NULLIF(LAG(total_active_listings, 1) OVER (PARTITION BY listing_neighbourhood ORDER BY TO_DATE("month/year", 'MM/YYYY')), 0)::numeric,2) AS percentage_change_active,
+    (total_inactive_listings - LAG(total_inactive_listings, 1) OVER (PARTITION BY listing_neighbourhood ORDER BY TO_DATE("month/year", 'MM/YYYY'))) * 100 / NULLIF(LAG(total_inactive_listings, 1) OVER (PARTITION BY listing_neighbourhood ORDER BY TO_DATE("month/year", 'MM/YYYY')), 0)::numeric AS percentage_change_inactive,
     total_number_of_stays,
-    (total_revenue / NULLIF(total_listings, 0)) AS avg_rev
+    ROUND((total_revenue / NULLIF(total_active_listings, 0)),2) AS estimated_revenue_per_active_listing
 FROM CTE_ACTIVE_LISTINGS
-ORDER BY listing_neighbourhood, month, year
+ORDER BY listing_neighbourhood, month, year, "month/year"

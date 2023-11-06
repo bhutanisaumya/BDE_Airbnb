@@ -6,24 +6,26 @@
     )
 }}
 
--- Common Table Expression (CTE) to calculate metrics
-WITH CTE_ACTIVE_LISTINGS AS (
+-- Create a common table expression (CTE) to compute metrics related to hosts and their neighborhoods
+WITH CTE_HOST_METRICS AS (
     SELECT
         host_neighbourhood_lga_name AS host_neighbourhood_lga,
-        TO_DATE(SUBSTRING(date, 1, 7), 'YYYY-MM') AS "month/year",
+        TO_CHAR(date_trunc('month', date), 'MM/YYYY') AS "month/year",
+        date_trunc('month', date) AS month,
+        date_trunc('year', date) AS year,
         COUNT(DISTINCT host_id) AS total_distinct_hosts,
-        SUM(price * (30 - availability_30)) AS total_revenue
+        SUM(CASE WHEN host_neighbourhood_lga_name IS NOT NULL THEN price * (30 - availability_30) ELSE 0 END) AS total_revenue
     FROM {{ ref('facts_listings') }}
-    WHERE has_availability = 't'
-    GROUP BY host_neighbourhood_lga, TO_DATE(SUBSTRING(date, 1, 7), 'YYYY-MM')
+    WHERE host_neighbourhood_lga_name IS NOT NULL
+    GROUP BY host_neighbourhood_lga,  month, year
 )
 
--- Query to select and calculate additional metrics
+-- Query to extract and calculate host metrics
 SELECT 
     host_neighbourhood_lga,
     "month/year",
     total_distinct_hosts,
-    total_revenue,
-    (total_revenue / NULLIF(total_distinct_hosts, 0)) AS avg_estimated_revenue_per_host
-FROM CTE_ACTIVE_LISTINGS
-ORDER BY host_neighbourhood_lga, "month/year"
+    ROUND(total_revenue,2) AS total_revenue,
+    ROUND((total_revenue / NULLIF(total_distinct_hosts, 0)),2) AS avg_estimated_revenue_per_host
+FROM CTE_HOST_METRICS
+ORDER BY host_neighbourhood_lga, month, year
