@@ -6,7 +6,7 @@
     )
 }}
 
--- Create a common table expression (CTE) to compute metrics related to properties and listings
+-- Create a Common Table Expression (CTE) to calculate property and listing metrics
 WITH CTE_PROPERTY_METRICS AS (
     SELECT
         property_type,
@@ -28,7 +28,7 @@ WITH CTE_PROPERTY_METRICS AS (
         SUM(CASE WHEN has_availability = 't' THEN 30 - availability_30 ELSE 0 END) AS total_number_of_stays,
         SUM(CASE WHEN has_availability = 't' THEN price * (30 - availability_30) ELSE 0 END) AS total_revenue
     FROM {{ ref('facts_listings') }}
-    GROUP BY listing_id, property_type, room_type, accommodates, month, year
+    GROUP BY property_type, room_type, accommodates, month, year
 )
 
 -- Query to extract and calculate property and listing metrics
@@ -37,17 +37,17 @@ SELECT
     room_type,
     accommodates,
     "month/year",
-    (total_active_listings::numeric / total_listings) * 100 AS active_listing_rate,
+    ROUND((total_active_listings::numeric / NULLIF(total_listings, 0)),2) * 100 AS active_listing_rate,
     min_price_active_listings,
     max_price_active_listings,
     median_price_active_listings,
-    avg_price_active_listings,
+    ROUND(avg_price_active_listings,2) AS avg_price_active_listings,
     total_distinct_hosts,
-    (total_superhost_count::numeric / NULLIF(total_distinct_hosts, 0)) * 100 AS superhost_rate,
-    avg_review_scores_rating,
-    (total_active_listings - LAG(total_active_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY'))) * 100 / NULLIF(LAG(total_active_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY')), 0) AS percentage_change_active,
-    (total_inactive_listings - LAG(total_inactive_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY'))) * 100 / NULLIF(LAG(total_inactive_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY')), 0) AS percentage_change_inactive,
+    ROUND(((total_superhost_count::numeric / NULLIF(total_distinct_hosts, 0)) * 100),2) AS superhost_rate,
+    ROUND(avg_review_scores_rating,2) AS avg_review_scores_rating,
+    ROUND((total_active_listings - LAG(total_active_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY'))) * 100 / NULLIF(LAG(total_active_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY')), 0)::numeric,2) AS percentage_change_active,
+    (total_inactive_listings - LAG(total_inactive_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY'))) * 100 / NULLIF(LAG(total_inactive_listings, 1) OVER (PARTITION BY property_type, room_type, accommodates ORDER BY TO_DATE("month/year", 'MM/YYYY')), 0)::numeric AS percentage_change_inactive,
     total_number_of_stays,
-    (total_revenue / NULLIF(total_active_listings, 0)) AS avg_estimated_revenue_per_active_listing
+    ROUND((total_revenue / NULLIF(total_active_listings, 0)),2) AS avg_estimated_revenue_per_active_listing
 FROM CTE_PROPERTY_METRICS
 ORDER BY property_type, room_type, accommodates, month, year, "month/year"
